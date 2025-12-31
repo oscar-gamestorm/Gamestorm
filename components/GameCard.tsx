@@ -7,19 +7,20 @@ export default function GameCard({
     categoryIndex,
 }: {
     game: any
-    categoryIndex: number
+    categoryIndex?: number
 }) {
     if (!game) return null;
+    const index = categoryIndex ?? 0;
 
     const ref = useRef<HTMLDivElement | null>(null)
 
     // First 4 categories render immediately — others lazy load
-    const [visible, setVisible] = useState(categoryIndex < 4)
+    const [visible, setVisible] = useState(index < 4)
     const [hovered, setHovered] = useState(false)
 
     // Ensure skeleton shows first and content loads only when visible
     useEffect(() => {
-        if (categoryIndex < 4) return // no lazy load for first 4
+        if (index < 4) return // no lazy load for first 4
 
         const el = ref.current
         if (!el) return
@@ -67,7 +68,7 @@ export default function GameCard({
             onMouseLeave={() => setHovered(false)}
         >
             <div style={styles.imageWrap}>
-                <img src={game?.cover_image_url} alt={game?.title ?? ''} style={styles.image} />
+                <img src={imageSrc} alt={game?.title ?? ''} style={styles.image} />
             </div>
 
             <div style={styles.meta}>
