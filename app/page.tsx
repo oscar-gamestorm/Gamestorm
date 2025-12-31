@@ -73,11 +73,6 @@ export default function Home() {
         "Session Skate Sim"
       ];
       const normalize = (s: string = "") => s.trim().toLowerCase();
-      console.log(
-        'URL =', process.env.NEXT_PUBLIC_SUPABASE_URL,
-        'KEY =', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-      )
-
 
       const sortedForYou = (forYou.data ?? []).sort((a, b) => {
         const titleA = normalize(a.title);

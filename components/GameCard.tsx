@@ -9,6 +9,8 @@ export default function GameCard({
     game: any
     categoryIndex: number
 }) {
+    if (!game) return null;
+
     const ref = useRef<HTMLDivElement | null>(null)
 
     // First 4 categories render immediately — others lazy load
@@ -65,7 +67,7 @@ export default function GameCard({
             onMouseLeave={() => setHovered(false)}
         >
             <div style={styles.imageWrap}>
-                <img src={imageSrc} alt={game?.title ?? ''} style={styles.image} />
+                <img src={game?.cover_image_url} alt={game?.title ?? ''} style={styles.image} />
             </div>
 
             <div style={styles.meta}>
