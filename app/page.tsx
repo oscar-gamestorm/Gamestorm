@@ -1,65 +1,200 @@
+'use client'
+import Header from "@/components/header";
 import Image from "next/image";
+import { supabase } from "./lib/supabaseClient";
+import { useState, useEffect } from 'react';
+import Toolbar from "@/components/toolbar";
+import GameRow from "@/components/GameRow";
+import { useAuth } from "@/providers/authProvider";
+import { color } from "framer-motion";
 
 export default function Home() {
+
+  // App.tsx or RootLayout
+
+  const [filter, setFilter] = useState<string | null>(null)
+  const [category, setCategory] = useState<string | null>(null)
+  const [forYouGames, setForYouGames] = useState<any[]>([])
+  const [adventureGames, setAdventureGames] = useState<any[]>([])
+  const [racingGames, setRacingGames] = useState<any[]>([])
+  const [shootingGames, setShootingGames] = useState<any[]>([])
+  const [simulationGames, setSimulationGames] = useState<any[]>([])
+  const [actionGames, setActionGames] = useState<any[]>([])
+  const [pcGames, setPcGames] = useState<any[]>([])
+
+  //SHOW TOAST ON LOGIN
+  const [showLoginToast, setShowLoginToast] = useState(false)
+
+  //AUTH alert ? good
+  // : bad
+
+  {/**
+    const { user, loading_2 } = useAuth();
+
+  if (loading_2) {
+    return null; // wait quietly instead of flashing text
+  }
+    */}
+
+  useEffect(() => {
+    const fetchRows = async () => {
+      const [
+        forYou,
+        adventure,
+        racing,
+        shooting,
+        simulation,
+        action,
+        pc,
+      ] = await Promise.all([
+        supabase.from('games').select('*').order('downloads', { ascending: false }),
+        supabase.from('games').select('*').contains('genres', ['adventure']).order('downloads', { ascending: false }),
+        supabase.from('games').select('*').contains('genres', ['racing']).order('downloads', { ascending: false }),
+        supabase.from('games').select('*').contains('genres', ['shooter']).order('downloads', { ascending: false }),
+        supabase.from('games').select('*').contains('genres', ['simulation']).order('downloads', { ascending: false }),
+        supabase.from('games').select('*').contains('genres', ['action']).order('downloads', { ascending: false }),
+        supabase.from('games').select('*').in('platform', ['pc', 'both']).order('downloads', { ascending: false }),
+      ])
+
+      setForYouGames(forYou.data ?? [])
+      const priorityOrder = [
+        "Free Fire",
+        "Call of Duty: Mobile",
+        "Blood Strike",
+        "Forza Horizon 4",
+        "Marvel's Spider-Man Remastered",
+        "Ori and the Blind Forest",
+        "Warframe",
+        "Red Dead Redemption 2",
+        "Elden Ring",
+        "Dead Cells",
+        "Assassins Creed Odyssey",
+        "GTA Chinatown Wars",
+        "Session Skate Sim"
+      ];
+      const normalize = (s: string = "") => s.trim().toLowerCase();
+      console.log(
+        'URL =', process.env.NEXT_PUBLIC_SUPABASE_URL,
+        'KEY =', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      )
+
+
+      const sortedForYou = (forYou.data ?? []).sort((a, b) => {
+        const titleA = normalize(a.title);
+        const titleB = normalize(b.title);
+
+        const matchIndex = (title: string) => {
+
+          // explicitly push Free Fire Max downn the list||
+          if (title.startsWith("free fire max")) return 998;
+
+          for (let i = 0; i < priorityOrder.length; i++) {
+            const p = normalize(priorityOrder[i]);
+            if (title === p || title.startsWith(p + " ")) {
+              return i;
+            }
+          }
+
+          // everything else = normal fallback region
+          return 999;
+        };
+
+        const ap = matchIndex(titleA);
+        const bp = matchIndex(titleB);
+
+        return ap - bp;
+      });
+      console.log(
+        "Sample titles:",
+        (forYou.data ?? []).slice(0, 20).map(g => g.title)
+      );
+
+      setForYouGames(sortedForYou);
+
+
+
+      setAdventureGames(adventure.data ?? [])
+      setRacingGames(racing.data ?? [])
+      setShootingGames(shooting.data ?? [])
+      setSimulationGames(simulation.data ?? [])
+      setActionGames(action.data ?? [])
+      setPcGames(pc.data ?? [])
+    }
+
+    fetchRows()
+    //TOAST FLAG 
+    const flag = localStorage.getItem("gs_login_success");
+    if (flag) {
+      setShowLoginToast(true);
+      localStorage.removeItem("gs_login_success");
+
+      setTimeout(() => setShowLoginToast(false),
+        2500)
+    }
+  }, [])
+  //RENDER VISUALITIES AND GAME CARDS
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div style={styles.page}>
+
+      {showLoginToast && (
+        <div className="
+          fixed top-6 left-1/2 -translate-x-1/2 z-[9999]
+          px-4 py-2 rounded-xl
+          bg-white/10 backdrop-blur-md
+          border border-emerald-400/30
+          text-emerald-300 font-medium
+          shadow-lg
+        ">
+          <span className="mr-2">✔</span>
+          Logged in successfully
+        </div>
+      )}
+
+      <Header />
+      <main id="app-scroll" style={styles.container}>
+        <Toolbar
+          filter={filter}
+          category={category}
+          onFilterChange={setFilter}
+          onCategoryChange={setCategory}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+        {/**
+         * <>
+          {user ? (
+            <p>Welcome back, {user.email}</p>
+          ) : (
+            <p>You are not logged in</p>
+          )}
+        </>
+         */}
+
+        <GameRow title="For You" games={forYouGames} />
+        <GameRow title="Adventure" games={adventureGames} />
+        <GameRow title="Racing" games={racingGames} />
+        <GameRow title="Shooting" games={shootingGames} />
+        <GameRow title="Simulation" games={simulationGames} />
+        <GameRow title="Action" games={actionGames} />
+        <GameRow title="PC Games" games={pcGames} />
+
       </main>
     </div>
-  );
+  )
+}
+
+const styles: Record<string, React.CSSProperties> = {
+  page: {
+    backgroundColor: '#020617',
+    minHeight: '150vh',
+    overflow: 'hidden',
+  },
+
+  container: {
+    maxWidth: '1280px',
+    margin: '0 auto',
+    padding: '24px',
+    paddingTop: '104px',
+    overflowX: 'hidden',
+    overflowY: 'auto',
+  },
 }
