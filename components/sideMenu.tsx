@@ -3,7 +3,7 @@
 import { useIsMobile } from "@/app/lib/useIsMobile";
 import type { CSSProperties } from "react";
 import { supabase } from "@/app/lib/supabaseClient";
-import { useRouter } from "next/navigation";   // ✅ App Router
+import { useRouter } from "next/navigation";   // App Router
 import { useState } from "react";
 
 type Props = {
@@ -25,6 +25,7 @@ export default function SideMenu({ open, onClose }: Props) {
             setAuthLoading(false);
             return;
         }
+
 
         router.push("/auth");
     };

@@ -1,158 +1,195 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import GameStormLogo from "@/components/gamestormLogo"
-import { Eye, EyeOff, X } from "lucide-react"
+import { X } from "lucide-react"
 import PasswordFields from "../../components/passwordFields"
 import { supabase } from "../lib/supabaseClient"
-import { useAuth } from "@/providers/authProvider"
-import { useRouter } from "next/navigation";
-import GameStormLoader from "@/components/GameStormLoader"
+import { useRouter } from "next/navigation"
+import "@/styles/gs-loader.css"
 
-const GameLoader = ({ label = "Loading..." }) => (
+// ====== INTEGRATED GEOMETRIC LOADER ======
+const GameLoader = ({ label = "Loading..." }: { label?: string }) => (
   <div className="fixed inset-0 z-[9999] grid place-items-center bg-black/80 backdrop-blur-md">
     <div className="flex flex-col items-center gap-4">
-      <div className="w-14 h-14 rounded-full border-4 border-emerald-400 border-t-transparent animate-spin" />
-      <p className="text-emerald-300 font-semibold tracking-wide">{label}</p>
+      <div className="flex items-center gap-6">
+        <div className="loader">
+          <svg viewBox="0 0 80 80">
+            <circle cx="40" cy="40" r="32"></circle>
+          </svg>
+        </div>
+
+        <div className="loader triangle">
+          <svg viewBox="0 0 86 80">
+            <polygon points="43 8 79 72 7 72"></polygon>
+          </svg>
+        </div>
+
+        <div className="loader">
+          <svg viewBox="0 0 80 80">
+            <rect x="8" y="8" width="64" height="64"></rect>
+          </svg>
+        </div>
+      </div>
+
+      <p className="text-emerald-300 font-semibold tracking-wide">
+        {label}
+      </p>
     </div>
   </div>
-);
-export default function AuthPage() {
-  const router = useRouter();
+)
 
-  // PANEL CONTROL (overlay open / closed)
+export default function AuthPage() {
+  //TOAST STATE VALUES
+  const [toast, setToast] = useState<null | { text: string; type: "success" | "error" }>(null)
+  const [toastClosing, setToastClosing] = useState(false)
+
+  const router = useRouter()
+  //Handle Cookies Session
+  {/**useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session) {
+        router.replace("/")
+      }
+    })
+
+    return () => sub.subscription.unsubscribe()
+  }, [])*/}
+
+
   const [panel, setPanel] = useState<"none" | "login" | "signup">("none")
   const [closing, setClosing] = useState(false)
-
-  // AUTH MODE (what form is showing)
   const [mode, setMode] = useState<"login" | "signup">("login")
 
-  // AUTH FIELDS
   const [username, setUsername] = useState("")
   const [agree, setAgree] = useState(false)
-
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirm, setConfirm] = useState("")
   const [message, setMessage] = useState<string | null>(null)
 
-  //COMPUTED BOOLEAN
   const canSignup =
     username.trim() &&
     email.trim() &&
     password.trim() &&
     confirm.trim() &&
-    password === confirm &&
-    agree
+    password === confirm
 
-  //CREATE ACCOUNT TOAST
-  const [successAlert, setSuccessAlert] = useState(false);
+  const [successAlert, setSuccessAlert] = useState(false)
 
-  //ENTER KEY TO NEXT FIELD
-  const handleEnterNext = (e: React.KeyboardEvent<HTMLInputElement>, nextId?: string) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      if (nextId) {
-        const el = document.getElementById(nextId);
-        el?.focus();
-      }
-    }
-  };
-
-  // LOADING STATE
   const [loading, setLoading] = useState(false)
-  //Global loader
-  const [switching, setSwitching] = useState(false);
-  const [uiLoading, setUiLoading] = useState(false);
+  const [switching, setSwitching] = useState(false)
+  const [uiLoading, setUiLoading] = useState(false)
 
 
-  const switchMode = async (target: "login" | "signup") => {
-    setSwitching(true);
 
-    // tiny delay for visual feedback (or replace with real async work later)
-    await new Promise((r) => setTimeout(r, 500));
+  const showToast = (text: string, type: "success" | "error" = "success") => {
+    setToast({ text, type })
+    setToastClosing(false)
 
-    setMode(target);
-    setSwitching(false);
-  };
-  {
-    switching && (
-      <GameStormLoader
-        label={mode === "login" ? "Opening sign-up…" : "Returning to login…"}
-      />
-    )
+    setTimeout(() => setToastClosing(true), 2800)
+    setTimeout(() => setToast(null), 3200)
   }
 
-  // ==============================
-  // AUTH HANDLERS
-  // ==============================
+
+  const handleEnterNext = (e: React.KeyboardEvent<HTMLInputElement>, nextId?: string) => {
+    if (e.key === "Enter") {
+      e.preventDefault()
+      document.getElementById(nextId || "")?.focus()
+    }
+  }
+
+  const switchMode = async (target: "login" | "signup") => {
+    setSwitching(true)
+    await new Promise(r => setTimeout(r, 500))
+    setMode(target)
+    setSwitching(false)
+  }
 
   const handleSignup = async () => {
-    if (!username.trim()) return setMessage("Please enter a username.")
-    if (password !== confirm) return setMessage("Passwords do not match.")
-    if (!agree) return setMessage("You must accept the terms to continue.")
+    if (!email.includes("@"))
+      return showToast("Invalid email format", "error")
+
+    if (password !== confirm)
+      return showToast("Passwords do not match", "error")
+
+    if (!username.trim())
+      return showToast("Username is required", "error")
+
+    // remove agree-to-terms validation
+    // if (!agree) return ...
 
     setLoading(true)
 
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        data: { username }
-      }
+      options: { data: { username } }
     })
 
     setLoading(false)
 
-    if (error) return setMessage(error.message)
+    if (error)
+      return showToast(error.message, "error")
 
-    {/**setMessage("Account created — verify your email, then log in.")
-    setMode("login")*/}
+    showToast("Account created successfully", "success")
 
-    //REMOVE CREATE ACCOUNT PANEL AFTER SUCCESS
-    setPanel("none");
+    setPanel("none")
+    setSuccessAlert(true)
 
-    //SHOW SUCCESS ALERT AFTER ACCOUNT IS SUCCESSFUL
-    setSuccessAlert(true);
+    setUsername("")
+    setPassword("")
+    setEmail("")
+    setConfirm("")
 
-    //CLEAR CREATE ACCOUNT INPUT FIELDS
-    setUsername("");
-    setPassword("");
-    setEmail("");
-    setConfirm("");
-
-    setTimeout(() =>
-      setSuccessAlert(false), 2500)
-  };
+    setTimeout(() => setSuccessAlert(false), 2500)
+  }
 
 
   const handleLogin = async () => {
+    setUiLoading(true)
     setLoading(true)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    setLoading(false)
 
-    if (error) return setMessage("Incorrect email or password.")
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    })
 
-    //SHOW SUCCESS TOAST ON MAIN PAGE AFTER LOGIN SUCCESSFUL
-    localStorage.setItem("gs_login_success", "1");
+    setPanel("none")
+    if (error) {
+      setUiLoading(false)
+      setLoading(false)
+      setPanel("none")
+      return showToast("Incorrect email or password", "error")
+    }
+
+    localStorage.setItem("gs_login_success", "1")
+
+    router.replace("/")
     
-    router.push("/")
+    //safety loader fallbacks
+    setTimeout(()=> setUiLoading(false), 
+          3000)
+
+    setPanel("none")
+
+    //TEST USER AUTH
+    //console.log("Session after reload:", data.session)
   }
 
   const handleReset = async () => {
     const { error } = await supabase.auth.resetPasswordForEmail(email)
     if (error) return setMessage(error.message)
-
     setMessage("Password reset link sent to your email.")
   }
 
   return (
-
     <div className="relative min-h-screen bg-[#020617] text-white overflow-hidden">
-      {uiLoading && <GameLoader label="Switching…" />}
+      {uiLoading && <GameLoader label="" />}
+
       {/* Green Aura Background */}
       <div className="absolute inset-0">
         <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[900px] h-[900px] bg-emerald-500/25 blur-[140px] rounded-full" />
@@ -164,6 +201,21 @@ export default function AuthPage() {
           <GameStormLogo size={40} />
           <span className="text-2xl font-semibold tracking-wide">GameStorm Inc.</span>
         </div>
+
+        {/**toast ui */}
+        {toast && (
+          <div className={`
+    fixed top-6 left-1/2 -translate-x-1/2 transform-gpu z-[9999]
+    px-4 py-2 rounded-xl backdrop-blur shadow-lg
+    ${toastClosing ? "animate-fade-out" : "animate-fade-in-up"}
+    ${toast.type === "success"
+              ? "bg-white/10 border border-emerald-400/40 text-emerald-300"
+              : "bg-white/10 border border-red-400/40 text-red-300"}
+  `}>
+            {toast.type === "success" ? "✔ " : "✖ "}
+            {toast.text}
+          </div>
+        )}
 
         <div className="flex items-center gap-6">
 
@@ -281,7 +333,7 @@ export default function AuthPage() {
                 {mode === "login" ? "Log In" : "Create Account"}
               </h1>
 
-              {message && <p className="text-red-400 mb-2">{message}</p>}
+              {/**message && <p className="text-red-400 mb-2">{message}</p>*/}
 
               {/**Form Inputs */}
               <form autoComplete="off" className="space-y-3">
@@ -347,21 +399,12 @@ export default function AuthPage() {
                   />
                 )}
 
-                {/* TERMS — signup only */}
+                {/* TERMS — signup only -- agree to terms removed but padding space retained*/}
                 {mode === "signup" && (
                   <label className="flex items-center gap-2 text-sm text-gray-300 pt-1">
-                    <input
-                      type="checkbox"
-                      checked={agree}
-                      onChange={e => setAgree(e.target.checked)}
-                      className="accent-emerald-500"
-                    />
-                    I agree to the Terms & Conditions
                   </label>
                 )}
               </form>
-
-
 
               {mode === "login" ? (
                 <>
@@ -388,7 +431,7 @@ export default function AuthPage() {
                       setTimeout(() => {
                         setMode("signup");
                         setUiLoading(false);
-                      }, 600)
+                      }, 2800)
                     }
                     }
                     className="mt-3 text-emerald-400"
@@ -421,7 +464,7 @@ export default function AuthPage() {
                       setTimeout(() => {
                         setMode("login");
                         setUiLoading(false);
-                      }, 600)
+                      }, 2800)
                     }}
                     className="mt-3 text-emerald-400"
                   >
@@ -433,22 +476,6 @@ export default function AuthPage() {
           </motion.div>
         </div>
       )}
-
-      {successAlert && (
-        <div className="
-    fixed top-6 left-1/2 -translate-x-1/2
-    px-4 py-2 rounded-xl
-    bg-white/10 backdrop-blur
-    border border-emerald-400/40
-    text-emerald-300 font-semibold
-    shadow-lg
-    animate-fade-in-up
-  ">
-          <span className="mr-2">✔</span>
-          Account created successfully
-        </div>
-      )}
-
     </div>
   )
 }
